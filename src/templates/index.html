@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Viewer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Blockchain</h1>
+    <div id="chain"></div>
+    <h2>Wallets</h2>
+    <button id="createWallet">Create New Wallet</button>
+    <div id="wallets"></div>
+    <h2>Mine</h2>
+    <input type="text" id="minerAddress" placeholder="Enter your wallet address">
+    <button id="mineBlock">Mine Block</button>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+</body>
+</html>

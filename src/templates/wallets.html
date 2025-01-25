@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кошелек</title>
+    <script>
+        async function fetchWallet() {
+            const address = document.getElementById('wallet-address').value;
+            const response = await fetch(`/wallet/${address}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                document.getElementById('wallet-balance').innerText = `Баланс: ${data.balance}`;
+            } else {
+                document.getElementById('wallet-balance').innerText = data.message;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Кошелек</h1>
+    <label for="wallet-address">Введите адрес кошелька:</label>
+    <input type="text" id="wallet-address">
+    <button onclick="fetchWallet()">Показать баланс</button>
+    <p id="wallet-balance">Баланс: 0</p>
+</body>
+</html>

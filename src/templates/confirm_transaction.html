@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подтверждение транзакции</title>
+</head>
+<body>
+    <h1>Подтверждение транзакции</h1>
+    <p>Получатель: {{ recipient }}</p>
+    <p>Сумма: {{ amount }}</p>
+    <form action="/confirm_transaction" method="post">
+        <input type="hidden" name="transaction_id" value="{{ transaction_id }}">
+        <button type="submit">Подтвердить</button>
+    </form>
+    <a href="/">Отмена</a>
+</body>
+</html>
