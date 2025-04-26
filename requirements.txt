@@ -1,0 +1,8 @@
+Flask
+requests
+ecdsa
+Flask-SocketIO
+APScheduler
+Flasgger
+prometheus_client
+pyjwt

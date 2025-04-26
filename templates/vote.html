@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+    <h1>Голосование</h1>
+    
+    <!-- Поле для ввода адреса смарт‑контракта -->
+    <input type="text" id="contractAddress" placeholder="Введите адрес смарт‑контракта">
+    
+    <!-- Поле для ввода имени кандидата -->
+    <input type="text" id="candidate" placeholder="Введите имя кандидата">
+    
+    <!-- Кнопка отправки голосования -->
+    <button onclick="vote()">Проголосовать</button>
+    
+    <!-- Контейнер для отображения результата -->
+    <pre id="voteResult"></pre>
+  </div>
+
+  <script>
+    async function vote() {
+      const address = document.getElementById('contractAddress').value;
+      const candidate = document.getElementById('candidate').value;
+      if (!address || !candidate) {
+        alert("Пожалуйста, введите адрес и имя кандидата");
+        return;
+      }
+      try {
+        const response = await fetch("/contract/call", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address: address, method: "vote", params: { candidate: candidate } })
+        });
+        const data = await response.json();
+        document.getElementById('voteResult').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        console.error("Ошибка голосования:", err);
+        document.getElementById('voteResult').textContent = "Ошибка: " + err;
+      }
+    }
+  </script>
+{% endblock %}

@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 15s  # Интервал, с которым Prometheus будет опрашивать целевые эндпоинты
+
+scrape_configs:
+  - job_name: 'baytcoin'
+    static_configs:
+      - targets: ['localhost:5000']  # Указываем адрес вашего приложения, где находится /metrics

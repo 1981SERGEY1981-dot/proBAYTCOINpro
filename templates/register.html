@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+    <h1>Регистрация</h1>
+    <form id="registerForm">
+      <input type="text" id="username" placeholder="Имя пользователя" required>
+      <input type="password" id="password" placeholder="Пароль" required>
+      <button type="submit">Зарегистрироваться</button>
+    </form>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('registerForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      try {
+        const response = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+        document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        document.getElementById('result').textContent = 'Ошибка: ' + error;
+      }
+    });
+  </script>
+{% endblock %}

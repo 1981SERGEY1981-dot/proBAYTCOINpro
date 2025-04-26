@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>События смарт‑контрактов</h1>
+    <button onclick="loadEvents()">Обновить события</button>
+    <div id="eventsContainer"></div>
+    <script>
+      async function loadEvents() {
+        try {
+          const response = await fetch('/events');
+          const data = await response.json();
+          let events = data.events;
+          if (!events || events.length === 0) {
+            document.getElementById("eventsContainer").innerHTML = "<p>События отсутствуют.</p>";
+            return;
+          }
+          let html = "<table>";
+          html += "<tr><th>Время</th><th>Событие</th><th>Данные</th></tr>";
+          events.forEach(event => {
+            let dt = new Date(event.timestamp * 1000);
+            html += `<tr>`;
+            html += `<td>${dt.toLocaleString()}</td>`;
+            html += `<td>${event.event_name}</td>`;
+            html += `<td>${JSON.stringify(event.event_data)}</td>`;
+            html += `</tr>`;
+          });
+          html += "</table>";
+          document.getElementById("eventsContainer").innerHTML = html;
+        } catch (err) {
+          console.error("Ошибка при загрузке событий:", err);
+        }
+      }
+      window.onload = loadEvents;
+    </script>
+{% endblock %}

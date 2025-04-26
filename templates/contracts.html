@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>BAYTCOIN Smart Contracts</h1>
+  
+    <h2>Деплой нового смарт‑контракта</h2>
+    <form id="deployContractForm" onsubmit="event.preventDefault(); deployContract();">
+        <textarea id="contractCode" placeholder='Введите JSON с кодом контракта (например, {"increment": "function(state, params){ state.counter = (state.counter || 0) + (params.value || 1); return state.counter; }"})' required rows="5"></textarea>
+        <textarea id="contractState" placeholder='Введите начальное состояние контракта в формате JSON (например, {"counter": 0})' rows="3"></textarea>
+        <button type="submit">Деплоить контракт</button>
+    </form>
+    <pre id="deployResult"></pre>
+  
+    <h2>Вызов метода смарт‑контракта</h2>
+    <form id="callContractForm" onsubmit="event.preventDefault(); callContractMethod();">
+        <input type="text" id="contractAddress" placeholder="Адрес контракта" required>
+        <input type="text" id="contractMethod" placeholder="Имя метода (например, increment)" required>
+        <textarea id="contractParams" placeholder='Введите параметры вызова в формате JSON (например, {"value": 5})' rows="3"></textarea>
+        <button type="submit">Вызвать метод</button>
+    </form>
+    <pre id="callResult"></pre>
+  
+    <h2>Список задеплоенных смарт‑контрактов</h2>
+    <button onclick="loadContracts()">Обновить список</button>
+    <pre id="contractsList"></pre>
+  
+    <script>
+        // Функция для деплоя смарт-контракта
+        async function deployContract() {
+            const codeText = document.getElementById('contractCode').value;
+            const stateText = document.getElementById('contractState').value;
+            let code, state;
+            try {
+                code = JSON.parse(codeText);
+            } catch (e) {
+                alert("Неверный формат кода контракта");
+                return;
+            }
+            try {
+                state = stateText ? JSON.parse(stateText) : {};
+            } catch (e) {
+                alert("Неверный формат начального состояния");
+                return;
+            }
+            try {
+                const response = await fetch('/contract/deploy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, state })
+                });
+                const data = await response.json();
+                document.getElementById('deployResult').textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                console.error("Ошибка деплоя контракта:", err);
+                document.getElementById('deployResult').textContent = "Ошибка деплоя контракта: " + err;
+            }
+        }
+    
+        // Функция для вызова метода смарт-контракта
+        async function callContractMethod() {
+            const address = document.getElementById('contractAddress').value;
+            const method = document.getElementById('contractMethod').value;
+            const paramsText = document.getElementById('contractParams').value;
+            let params = {};
+            try {
+                if (paramsText) {
+                params = JSON.parse(paramsText);
+                }
+            } catch (e) {
+                alert("Неверный формат параметров");
+                return;
+            }
+            try {
+                const response = await fetch('/contract/call', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address, method, params })
+                });
+                const data = await response.json();
+                document.getElementById('callResult').textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                console.error("Ошибка вызова метода контракта:", err);
+                document.getElementById('callResult').textContent = "Ошибка вызова метода контракта: " + err;
+            }
+        }
+    
+        // Функция для получения списка задеплоенных смарт-контрактов
+        async function loadContracts() {
+            try {
+                const response = await fetch('/contract/list');
+                const data = await response.json();
+                document.getElementById('contractsList').textContent = JSON.stringify(data.contracts, null, 2);
+            } catch (err) {
+                console.error("Ошибка получения списка контрактов:", err);
+                document.getElementById('contractsList').textContent = "Ошибка получения списка контрактов: " + err;
+            }
+        }
+    </script>
+{% endblock %}

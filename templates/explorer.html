@@ -1,0 +1,822 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <title>BAYTCOIN Block Explorer</title>
+    <style>
+        table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        th, td {
+          border: 1px solid #ddd;
+          padding: 8px;
+        }
+        th {
+          background-color: #f2f2f2;
+        }
+        tr:hover {
+          background-color: #f5f5f5;
+          cursor: pointer;
+        }
+        .chart-container {
+          margin-top: 20px;
+          max-width: 600px;
+        }
+        .chart-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 200px !important; /* регулируйте высоту по вкусу */
+        }
+    </style>
+
+    <body onload="loadChain()">
+    <h1>BAYTCOIN Block Explorer</h1>
+    <div id="chainTable"></div>
+    <div id="blockDetails" style="margin-top:20px;"></div>
+    <br>
+    <button onclick="loadChain()">Обновить цепочку</button>
+
+    <h2>График сложности блоков</h2>
+    <canvas id="difficultyChart" width="600" height="100"></canvas>
+
+    <h2>График количества транзакций в блоке</h2>
+    <canvas id="transactionsChart" width="600" height="100"></canvas>
+
+    <div class="chart-container">
+        <h2>График интервала времени между блоками</h2>
+        <canvas id="timeIntervalChart" width="600" height="100"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>График базового вознаграждения по блокам</h2>
+        <canvas id="rewardChart" width="600" height="100"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>График кумулятивной работы</h2>
+        <canvas id="cumulativeWorkChart" width="600" height="100"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>График размера пула ожидающих транзакций</h2>
+        <canvas id="pendingChart" width="600" height="100"></canvas>
+    </div>
+      
+    <div class="chart-container">
+        <h2>График транзакций в минуту</h2>
+        <canvas id="txRateChart" width="600" height="100"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>График активных пользователей</h2>
+        <canvas id="activeUsersChart" width="600" height="100"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>График общего предложения монет</h2>
+        <canvas id="coinSupplyChart" width="600" height="100"></canvas>
+    </div>
+      
+    <div class="chart-container">
+        <h2>График средней комиссии по блокам</h2>
+        <canvas id="averageFeeChart" width="600" height="100"></canvas>
+    </div>
+      
+{% endblock %}
+
+{% block scripts %}
+    <!-- Socket.IO и Chart.js -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        // Функция для загрузки цепочки блоков и построения таблицы
+        async function loadChain() {
+            const response = await fetch('/chain');
+            const data = await response.json();
+            let tableHtml = "<table border='1' cellpadding='5' cellspacing='0'>";
+            tableHtml += "<tr><th>Index</th><th>Timestamp</th><th>Transactions</th><th>Proof</th><th>Difficulty</th><th>Prev Hash</th><th>Merkle Root</th></tr>";
+            data.chain.forEach(block => {
+                tableHtml += "<tr onclick='showBlockDetails(" + block.index + ")' style='cursor:pointer;'>";
+                tableHtml += "<td>" + block.index + "</td>";
+                tableHtml += "<td>" + new Date(block.timestamp * 1000).toLocaleString() + "</td>";
+                tableHtml += "<td>" + block.transactions.length + "</td>";
+                tableHtml += "<td>" + block.proof + "</td>";
+                tableHtml += "<td>" + block.difficulty + "</td>";
+                tableHtml += "<td>" + block.previous_hash + "</td>";
+                tableHtml += "<td>" + (block.merkle_root || "N/A") + "</td>";
+                tableHtml += "</tr>";
+            });
+            tableHtml += "</table>";
+            document.getElementById("chainTable").innerHTML = tableHtml;
+        }
+
+        // Функция для отображения подробностей блока по его индексу (можете добавить Merkle Root и в детали)
+        async function showBlockDetails(index) {
+            const response = await fetch('/block/' + index);
+            const block = await response.json();
+            let details = "<h3>Детали блока " + block.index + "</h3>";
+            details += "<p><strong>Timestamp:</strong> " + new Date(block.timestamp * 1000).toLocaleString() + "</p>";
+            details += "<p><strong>Proof:</strong> " + block.proof + "</p>";
+            details += "<p><strong>Difficulty:</strong> " + block.difficulty + "</p>";
+            details += "<p><strong>Previous Hash:</strong> " + block.previous_hash + "</p>";
+            details += "<p><strong>Merkle Root:</strong> " + block.merkle_root + "</p>";
+            details += "<h4>Транзакции:</h4>";
+            if (block.transactions.length > 0) {
+                details += "<ul>";
+                block.transactions.forEach(tx => {
+                    details += "<li>";
+                    details += "ID: " + tx.id + " | От: " + tx.sender + " | К: " + tx.recipient + " | Сумма: " + tx.amount;
+                    details += "</li>";
+                });
+                details += "</ul>";
+            } else {
+                details += "<p>Нет транзакций</p>";
+            }
+            document.getElementById("blockDetails").innerHTML = details;
+        }
+
+        // Функция для загрузки цепочки с сервера и построения таблицы блоков
+        async function loadChain() {
+        try {
+            const response = await fetch('/chain');
+            const data = await response.json();
+            let chain = data.chain;
+            let html = "<table>";
+            html += "<tr><th>Индекс</th><th>Время</th><th>Proof</th><th>Difficulty</th><th>Prev Hash</th><th>Merkle Root</th><th>Кол-во транзакций</th></tr>";
+            chain.forEach(block => {
+            html += `<tr onclick="showBlockDetails(${block.index})">`;
+            html += `<td>${block.index}</td>`;
+            let dt = new Date(block.timestamp * 1000);
+            html += `<td>${dt.toLocaleString()}</td>`;
+            html += `<td>${block.proof}</td>`;
+            html += `<td>${block.difficulty}</td>`;
+            html += `<td>${block.previous_hash.substring(0,10)}...</td>`;
+            html += `<td>${block.merkle_root.substring(0,10)}...</td>`;
+            html += `<td>${block.transactions.length}</td>`;
+            html += "</tr>";
+            });
+            html += "</table>";
+            document.getElementById("chainContainer").innerHTML = html;
+        } catch (err) {
+            console.error(err);
+        }
+        }
+
+        // Функция для отображения подробной информации о блоке по его индексу
+        async function showBlockDetails(index) {
+        try {
+            const response = await fetch('/block/' + index);
+            const block = await response.json();
+            let details = `<h3>Блок № ${block.index}</h3>`;
+            details += `<p><strong>Время:</strong> ${new Date(block.timestamp * 1000).toLocaleString()}</p>`;
+            details += `<p><strong>Proof:</strong> ${block.proof}</p>`;
+            details += `<p><strong>Difficulty:</strong> ${block.difficulty}</p>`;
+            details += `<p><strong>Previous Hash:</strong> ${block.previous_hash}</p>`;
+            details += `<p><strong>Merkle Root:</strong> ${block.merkle_root}</p>`;
+            details += `<p><strong>Транзакции:</strong></p>`;
+            if (block.transactions.length > 0) {
+            details += "<ul>";
+            block.transactions.forEach(tx => {
+                details += `<li>ID: ${tx.id} | От: ${tx.sender} | К: ${tx.recipient} | Сумма: ${tx.amount}</li>`;
+            });
+            details += "</ul>";
+            } else {
+            details += "<p>Нет транзакций</p>";
+            }
+            document.getElementById("blockDetails").innerHTML = details;
+        } catch (err) {
+            console.error(err);
+        }
+        }
+
+        // Загружаем цепочку при загрузке страницы
+        window.onload = loadChain;
+
+        // Подключаем Socket.IO для обновлений в реальном времени
+        const socket = io();
+        socket.on('new_block', function(data) {
+        alert('Новый блок добыт: ' + JSON.stringify(data));
+        loadChain();
+        buildDifficultyChart();
+        });
+
+        // Функция для загрузки цепочки блоков и построения таблицы
+        async function loadChain() {
+        try {
+            const response = await fetch('/chain');
+            const data = await response.json();
+            let chain = data.chain;
+            let html = "<table>";
+            html += "<tr><th>Индекс</th><th>Время</th><th>Proof</th><th>Difficulty</th><th>Prev Hash</th><th>Merkle Root</th><th>Кол-во транзакций</th></tr>";
+            chain.forEach(block => {
+            html += `<tr onclick="showBlockDetails(${block.index})">`;
+            html += `<td>${block.index}</td>`;
+            let dt = new Date(block.timestamp * 1000);
+            html += `<td>${dt.toLocaleString()}</td>`;
+            html += `<td>${block.proof}</td>`;
+            html += `<td>${block.difficulty}</td>`;
+            html += `<td>${block.previous_hash.substring(0,10)}...</td>`;
+            html += `<td>${block.merkle_root.substring(0,10)}...</td>`;
+            html += `<td>${block.transactions.length}</td>`;
+            html += "</tr>";
+            });
+            html += "</table>";
+            document.getElementById("chainContainer").innerHTML = html;
+        } catch (err) {
+            console.error(err);
+        }
+        }
+
+        // Функция для отображения подробностей блока по его индексу
+        async function showBlockDetails(index) {
+        try {
+            const response = await fetch('/block/' + index);
+            const block = await response.json();
+            let details = `<h3>Блок № ${block.index}</h3>`;
+            details += `<p><strong>Время:</strong> ${new Date(block.timestamp * 1000).toLocaleString()}</p>`;
+            details += `<p><strong>Proof:</strong> ${block.proof}</p>`;
+            details += `<p><strong>Difficulty:</strong> ${block.difficulty}</p>`;
+            details += `<p><strong>Previous Hash:</strong> ${block.previous_hash}</p>`;
+            details += `<p><strong>Merkle Root:</strong> ${block.merkle_root}</p>`;
+            details += `<p><strong>Транзакции:</strong></p>`;
+            if (block.transactions.length > 0) {
+            details += "<ul>";
+            block.transactions.forEach(tx => {
+                details += `<li>ID: ${tx.id} | От: ${tx.sender} | К: ${tx.recipient} | Сумма: ${tx.amount}</li>`;
+            });
+            details += "</ul>";
+            } else {
+            details += "<p>Нет транзакций</p>";
+            }
+            document.getElementById("blockDetails").innerHTML = details;
+        } catch (err) {
+            console.error(err);
+        }
+        }
+
+        // Функция для построения графика сложности блоков с использованием Chart.js
+        async function buildDifficultyChart() {
+        try {
+            const response = await fetch('/chain');
+            const data = await response.json();
+            let chain = data.chain;
+            const labels = chain.map(block => block.index);
+            const difficulties = chain.map(block => block.difficulty);
+            
+            const ctx = document.getElementById('difficultyChart').getContext('2d');
+            
+            // Если график уже создан, его нужно уничтожить перед перерисовкой
+            if (window.difficultyChartInstance) {
+            window.difficultyChartInstance.destroy();
+            }
+            
+            window.difficultyChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                label: 'Сложность блока',
+                data: difficulties,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                fill: false,
+                tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                x: {
+                    title: { display: true, text: 'Индекс блока' }
+                },
+                y: {
+                    title: { display: true, text: 'Сложность' }
+                }
+                }
+            }
+            });
+        } catch (err) {
+            console.error("Ошибка при построении графика:", err);
+        }
+        }
+
+        async function buildTransactionsChart() {
+            try {
+                const response = await fetch('/chain');
+                const data = await response.json();
+                let chain = data.chain;
+                
+                // Формируем метки: индекс блока
+                const labels = chain.map(block => block.index);
+                // Формируем данные: количество транзакций в каждом блоке
+                const transactionsCount = chain.map(block => block.transactions.length);
+                
+                // Выводим данные для отладки (опционально)
+                console.log("Метки (индексы блоков):", labels);
+                console.log("Количество транзакций:", transactionsCount);
+                
+                const ctx = document.getElementById('transactionsChart').getContext('2d');
+                
+                // Если график уже был создан, уничтожаем его для обновления
+                if (window.transactionsChartInstance) {
+                window.transactionsChartInstance.destroy();
+                }
+                
+                // Создаем новый график типа "bar"
+                window.transactionsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                    label: 'Количество транзакций в блоке',
+                    data: transactionsCount,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                    x: {
+                        title: { display: true, text: 'Индекс блока' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Количество транзакций' }
+                    }
+                    }
+                }
+                });
+            } catch (err) {
+                console.error("Ошибка при построении графика количества транзакций:", err);
+            }
+        }
+
+        async function buildTimeIntervalChart() {
+            try {
+                const response = await fetch('/chain');
+                const data = await response.json();
+                let chain = data.chain;
+                
+                // Проверяем, достаточно ли блоков для расчёта интервалов (должно быть минимум 2 блока)
+                if (!chain || chain.length < 2) {
+                console.warn("Недостаточно блоков для расчёта интервалов времени.");
+                return;
+                }
+                
+                // Вычисляем интервалы времени между блоками (в секундах)
+                const intervals = [];
+                const labels = [];
+                for (let i = 1; i < chain.length; i++) {
+                const timeDiff = chain[i].timestamp - chain[i - 1].timestamp;
+                intervals.push(timeDiff);
+                labels.push(chain[i].index); // или можно использовать порядковый номер интервала
+                }
+                
+                // Отладочный вывод
+                console.log("Метки (индексы блоков):", labels);
+                console.log("Интервалы времени (сек):", intervals);
+                
+                // Получаем контекст для элемента canvas
+                const ctx = document.getElementById('timeIntervalChart').getContext('2d');
+                
+                // Если график уже создан, уничтожаем его перед обновлением
+                if (window.timeIntervalChartInstance) {
+                window.timeIntervalChartInstance.destroy();
+                }
+                
+                // Создаем график типа "line"
+                window.timeIntervalChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                    label: 'Интервал времени между блоками (сек)',
+                    data: intervals,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    fill: false,
+                    tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                    x: { 
+                        title: { display: true, text: 'Индекс блока (начиная со второго)' }
+                    },
+                    y: { 
+                        title: { display: true, text: 'Интервал времени (сек)' },
+                        beginAtZero: true
+                    }
+                    }
+                }
+                });
+            } catch (err) {
+                console.error("Ошибка при построении графика интервалов времени:", err);
+            }
+        }
+
+        async function buildRewardChart() {
+            try {
+                const response = await fetch('/chain');
+                const data = await response.json();
+                let chain = data.chain;
+                if (!chain || chain.length === 0) {
+                console.warn("Цепочка пуста, график вознаграждения не строится.");
+                return;
+                }
+                
+                // Задайте базовое вознаграждение и интервал halving.
+                // Для тестовых целей можно использовать halvingInterval = 100.
+                const baseReward = 50; 
+                const halvingInterval = 210000;  // Для симуляции halving на небольшом количестве блоков. 
+                // Если хотите симулировать, установите halvingInterval = 210000.
+                
+                // Вычисляем вознаграждение для каждого блока по формуле:
+                // reward = baseReward / (2 ^ floor((block.index - 1) / halvingInterval))
+                const rewards = chain.map(block => {
+                let factor = Math.floor((block.index - 1) / halvingInterval);
+                return baseReward / Math.pow(2, factor);
+                });
+                
+                // Формируем метки - используем индексы блоков.
+                const labels = chain.map(block => block.index);
+                
+                // Получаем контекст canvas
+                const ctx = document.getElementById('rewardChart').getContext('2d');
+                
+                // Если график уже был создан, уничтожаем его для обновления.
+                if (window.rewardChartInstance) {
+                window.rewardChartInstance.destroy();
+                }
+                
+                // Создаем график типа "line"
+                window.rewardChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                    label: 'Базовое вознаграждение (reward)',
+                    data: rewards,
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    fill: false,
+                    tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                    x: {
+                        title: { display: true, text: 'Индекс блока' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Вознаграждение' },
+                        beginAtZero: true
+                    }
+                    }
+                }
+                });
+                
+                console.log("Построен график вознаграждения. Метки:", labels, "Данные:", rewards);
+            } catch (err) {
+                console.error("Ошибка при построении графика вознаграждения:", err);
+            }
+        }
+
+        async function buildCumulativeWorkChart() {
+            try {
+                const response = await fetch('/chain');
+                const data = await response.json();
+                let chain = data.chain;
+                if (!chain || chain.length === 0) {
+                console.warn("Цепочка пуста, график не будет построен.");
+                return;
+                }
+                
+                // Формируем метки: используем индекс блока
+                const labels = chain.map(block => block.index);
+                
+                // Вычисляем кумулятивную работу:
+                // Для каждого блока считаем работу = 16^difficulty, затем суммируем работу всех блоков до текущего
+                const cumulativeWork = [];
+                let sum = 0;
+                chain.forEach(block => {
+                sum += Math.pow(16, block.difficulty);
+                cumulativeWork.push(sum);
+                });
+                
+                // Выводим отладочную информацию в консоль
+                console.log("Метки (индексы блоков):", labels);
+                console.log("Кумулятивная работа:", cumulativeWork);
+                
+                // Получаем контекст для canvas
+                const ctx = document.getElementById('cumulativeWorkChart').getContext('2d');
+                
+                // Если график уже создан, уничтожаем его для обновления
+                if (window.cumulativeWorkChartInstance) {
+                window.cumulativeWorkChartInstance.destroy();
+                }
+                
+                // Создаем новый линейный график с помощью Chart.js
+                window.cumulativeWorkChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                    label: 'Кумулятивная работа',
+                    data: cumulativeWork,
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    fill: false,
+                    tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                    x: {
+                        title: { display: true, text: 'Индекс блока' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Кумулятивная работа' },
+                        beginAtZero: true
+                    }
+                    }
+                }
+                });
+            } catch (err) {
+                console.error("Ошибка при построении графика кумулятивной работы:", err);
+            }
+        }   
+
+        // Функция для получения количества ожидающих транзакций через эндпоинт /stats
+        async function fetchPendingTransactions() {
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+                return data.pending_transactions;
+            } catch (err) {
+                console.error("Ошибка при получении pending_transactions:", err);
+                return 0;
+            }
+            }
+
+            // Функция для построения графика пула ожидающих транзакций
+            function buildPendingTransactionsChart() {
+            const ctx = document.getElementById('pendingChart').getContext('2d');
+            const labels = [];      // метки времени (например, секунды с начала)
+            const pendingData = []; // данные: количество ожидающих транзакций
+            
+            // Создаем график с помощью Chart.js
+            const pendingChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Размер пула ожидающих транзакций',
+                    data: pendingData,
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    fill: false,
+                    tension: 0.1
+                }]
+                },
+                options: {
+                scales: {
+                    x: {
+                    title: { display: true, text: 'Время (сек)' }
+                    },
+                    y: {
+                    title: { display: true, text: 'Количество' },
+                    beginAtZero: true
+                    }
+                }
+                }
+            });
+            
+            // Начальное время, от которого будем считать прошедшие секунды
+            const startTime = Date.now();
+            
+            // Периодический опрос (каждые 5 секунд)
+            setInterval(async function() {
+                const pending = await fetchPendingTransactions();
+                const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+                labels.push(elapsedSeconds + 's');
+                pendingData.push(pending);
+                pendingChart.update();
+            }, 5000);
+        }
+
+        // Пример функции для построения графика транзакций в минуту
+        async function buildTxRateChart() {
+            try {
+                // Здесь предполагается, что у вас есть эндпоинт /tx_rate, который возвращает данные в формате:
+                // { "data": [ { "time": "12:00", "tx_count": 15 }, { "time": "12:01", "tx_count": 20 }, ... ] }
+                const response = await fetch('/tx_rate');
+                const result = await response.json();
+                const data = result.data;
+                
+                if (!data || data.length === 0) {
+                console.warn("Нет данных для графика транзакций в минуту.");
+                return;
+                }
+                
+                const labels = data.map(item => item.time);
+                const txCounts = data.map(item => item.tx_count);
+                
+                const ctx = document.getElementById('txRateChart').getContext('2d');
+                
+                if (window.txRateChartInstance) {
+                window.txRateChartInstance.destroy();
+                }
+                
+                window.txRateChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                    label: 'Транзакций в минуту',
+                    data: txCounts,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    fill: false,
+                    tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                    x: { title: { display: true, text: 'Время' } },
+                    y: { title: { display: true, text: 'Количество транзакций' }, beginAtZero: true }
+                    }
+                }
+                });
+            } catch (err) {
+                console.error("Ошибка при построении графика транзакций в минуту:", err);
+            }
+        }
+
+        // Пример функции для построения графика активных пользователей
+        function buildActiveUsersChart() {
+            // Предположим, что у вас есть глобальная переменная activeUsersData, которая обновляется при подключении/отключении пользователей.
+            // Для демонстрации создадим симулированные данные:
+            const labels = ['12:00', '12:05', '12:10', '12:15', '12:20'];
+            const activeUsers = [10, 15, 20, 18, 22];
+            
+            const ctx = document.getElementById('activeUsersChart').getContext('2d');
+            
+            if (window.activeUsersChartInstance) {
+                window.activeUsersChartInstance.destroy();
+            }
+            
+            window.activeUsersChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Активных пользователей',
+                    data: activeUsers,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    fill: false,
+                    tension: 0.1
+                }]
+                },
+                options: {
+                scales: {
+                    x: { title: { display: true, text: 'Время' } },
+                    y: { title: { display: true, text: 'Количество пользователей' }, beginAtZero: true }
+                }
+                }
+            });
+        }
+
+        async function buildCoinSupplyChart() {
+            try {
+                // Получаем данные цепочки с эндпоинта /chain
+                const response = await fetch('/chain');
+                const data = await response.json();
+                let chain = data.chain;
+                if (!chain || chain.length === 0) {
+                console.warn("Цепочка пуста, график предложения монет не будет построен.");
+                return;
+                }
+                
+                // Формируем метки для графика – используем индекс блока
+                const labels = chain.map(block => block.index);
+                
+                // Вычисляем общее предложение монет:
+                // Предполагаем, что транзакции от "0" являются coinbase-транзакциями и начисляют монеты.
+                let totalSupply = 0;
+                const coinSupply = chain.map(block => {
+                // Перебираем транзакции блока
+                block.transactions.forEach(tx => {
+                    if (tx.sender === "0") { // если это coinbase транзакция
+                    totalSupply += Number(tx.amount);  // обязательно приводим к числу, если это строка
+                    }
+                });
+                return totalSupply;
+                });
+                
+                console.log("Метки (индексы блоков):", labels);
+                console.log("Общее предложение монет:", coinSupply);
+                
+                // Получаем контекст canvas для графика
+                const ctx = document.getElementById('coinSupplyChart').getContext('2d');
+                
+                // Если график уже создан, уничтожаем его, чтобы обновить данные
+                if (window.coinSupplyChartInstance) {
+                window.coinSupplyChartInstance.destroy();
+                }
+                
+                window.coinSupplyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                    label: 'Общее предложение монет',
+                    data: coinSupply,
+                    borderColor: 'rgba(0, 0, 255, 1)',
+                    fill: false,
+                    tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                    x: {
+                        title: { display: true, text: 'Индекс блока' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Монеты' },
+                        beginAtZero: true
+                    }
+                    }
+                }
+                });
+                
+            } catch (err) {
+                console.error("Ошибка при построении графика предложения монет:", err);
+            }
+        }
+
+        async function buildAverageFeeChart() {
+            try {
+                const response = await fetch('/chain');
+                const data = await response.json();
+                let chain = data.chain;
+                if (!chain || chain.length === 0) {
+                console.warn("Цепочка пуста, график комиссий не будет построен.");
+                return;
+                }
+                
+                // Формируем метки – индекс блока
+                const labels = chain.map(block => block.index);
+                
+                // Вычисляем среднюю комиссию для каждого блока
+                const averageFees = chain.map(block => {
+                const txs = block.transactions;
+                if (!txs || txs.length === 0) return 0;
+                const totalFee = txs.reduce((sum, tx) => sum + parseFloat(tx.fee || 0), 0);
+                return totalFee / txs.length;
+                });
+                
+                console.log("Метки блоков:", labels);
+                console.log("Средние комиссии:", averageFees);
+                
+                const ctx = document.getElementById('averageFeeChart').getContext('2d');
+                
+                // Если график уже создан, уничтожаем его перед обновлением
+                if (window.averageFeeChartInstance) {
+                window.averageFeeChartInstance.destroy();
+                }
+                
+                window.averageFeeChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                    label: 'Средняя комиссия в блоке',
+                    data: averageFees,
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    fill: false,
+                    tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                    x: { title: { display: true, text: 'Индекс блока' } },
+                    y: { title: { display: true, text: 'Средняя комиссия' }, beginAtZero: true }
+                    }
+                }
+                });
+            } catch (err) {
+                console.error("Ошибка при построении графика средней комиссии:", err);
+            }
+        }
+
+
+        window.onload = function() {
+            loadChain();             // функция загрузки и отображения таблицы блоков (если используется)
+            buildDifficultyChart();  // график сложности (если он уже есть)
+            buildTransactionsChart(); // новый график количества транзакций
+            buildTimeIntervalChart(); // график интервалов времени между блоками
+            buildRewardChart();      // График базового вознаграждения
+            buildCumulativeWorkChart(); // новый график кумулятивной работы
+            buildPendingTransactionsChart(); // новый график пула ожидающих транзакций
+            buildTxRateChart();
+            buildActiveUsersChart();
+            buildCoinSupplyChart();  // график общего предложения монет
+            buildAverageFeeChart(); // новая функция для графика средней комиссии
+        };
+    </script>
+{% endblock %}

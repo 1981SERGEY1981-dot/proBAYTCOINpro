@@ -1,0 +1,29 @@
+{
+  "alice": {
+    "username": "alice",
+    "password": "scrypt:32768:8:1$xtPj8VQuZ6jrV1lM$1bea1799ce1666587ad1636d9ad4a89794aa85db11e2cec1698f4892446770dddeaaf2f6fceed720b10c45decbaa6032221c0582d88864451c3acc8e52a9da78",
+    "email": "",
+    "name": "",
+    "nonce": 1,
+    "wallet_private_key": "a_priv",
+    "wallet_public_key": "a_pub"
+  },
+  "bob": {
+    "username": "bob",
+    "password": "scrypt:32768:8:1$R76o1d2EK5THrJdX$665f9ef0913a0b01deb4a13226179242cef7230e84eb4b435a16dece1c8916b40d3047148f65fb612d5b23ee5304fca8cc56161fff6b82e4fb1c95df44d5c014",
+    "email": "",
+    "name": "",
+    "nonce": 0,
+    "wallet_private_key": "b_priv",
+    "wallet_public_key": "b_pub"
+  },
+  "1": {
+    "username": "1",
+    "password": "scrypt:32768:8:1$4cHbUttly55bGPJv$8da8f526dce51dcb40cc584bbd54e9420fd40a5fb646a5e8c9b4e966f7873623106ac1af93cac8ebf36c2d9da9b0adcd2fa13da0c3306f22276646f476cd3b15",
+    "email": "1981sberdser1981@gmail.com",
+    "name": "1",
+    "nonce": 0,
+    "wallet_private_key": "dc0231c380c67e5b59a3d2677acd4a0679c1136f437f7534eae40f94c00164ae",
+    "wallet_public_key": "382c60786cae504a35b713a4847c15c94f796f7df584e1c552483cc27351f76b6e8fadf509477f49571228c60a57d92981969a25be8c2661a721a6b06223f96a"
+  }
+}

@@ -1,0 +1,63 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+    <h1>Мой Профиль</h1>
+    <button onclick="loadProfile()">Загрузить профиль</button>
+    <pre id="profileData"></pre>
+    <h2>Обновить профиль</h2>
+    <input type="text" id="email" placeholder="Email">
+    <input type="text" id="name" placeholder="Имя">
+    <button onclick="updateProfile()">Обновить профиль</button>
+    <pre id="updateResult"></pre>
+  </div>
+
+  <script>
+    async function loadProfile() {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        alert("Токен отсутствует. Пожалуйста, войдите в систему.");
+        return;
+      }
+      console.log("Используется токен:", token); // Для отладки
+      try {
+        const res = await fetch('/profile', {
+          method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        document.getElementById('profileData').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById('profileData').textContent = "Ошибка: " + err;
+      }
+    }
+
+    async function updateProfile() {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        alert("Токен отсутствует. Пожалуйста, войдите в систему.");
+        return;
+      }
+      const email = document.getElementById('email').value;
+      const name = document.getElementById('name').value;
+      try {
+        const res = await fetch('/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ email, name })
+        });
+        const data = await res.json();
+        document.getElementById('updateResult').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById('updateResult').textContent = "Ошибка: " + err;
+      }
+    }
+
+    // Автоматическая загрузка профиля при загрузке страницы
+    window.onload = loadProfile;
+  </script>
+{% endblock %}

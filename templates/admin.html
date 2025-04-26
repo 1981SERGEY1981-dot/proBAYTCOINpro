@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container"></div>
+    <h1>BAYTCOIN Admin Panel</h1>
+    <button onclick="loadStats()">Обновить статистику</button>
+    <div id="statsContainer"></div>
+
+    <h2>Список узлов</h2>
+    <button onclick="loadNodes()">Обновить список узлов</button>
+    <div id="nodesContainer"></div>
+  
+    <h2>Дополнительные данные</h2>
+    <button onclick="loadChain()">Обновить цепочку блоков</button>
+    <div id="chainInfo"></div>
+
+    <h2>Актуальная цена Bitcoin (USD)</h2>
+    <button onclick="loadBitcoinPrice()">Обновить цену</button>
+    <pre id="bitcoinPrice"></pre>
+
+    <!-- Раздел для просмотра событий смарт‑контракта -->
+    <h2>События смарт‑контракта</h2>
+    <input type="text" id="contractAddress" placeholder="Введите адрес смарт‑контракта">
+    <!-- Кнопка для получения событий -->
+    <button onclick="loadContractEvents()">Показать события смарт‑контракта</button>
+    <!-- Контейнер для отображения результатов запроса -->
+    <pre id="contractEvents"></pre>
+  </div>
+
+  <script>
+    // Функция для загрузки статистики из эндпоинта /stats
+    async function loadStats() {
+      try {
+        const response = await fetch('/stats');
+        const data = await response.json();
+        let html = "<h3>Статистика блокчейна:</h3>";
+        html += `<p>Общее число блоков: ${data.total_blocks}</p>`;
+        html += `<p>Общее число транзакций: ${data.total_transactions}</p>`;
+        html += `<p>Ожидающих транзакций: ${data.pending_transactions}</p>`;
+        document.getElementById("statsContainer").innerHTML = html;
+      } catch (err) {
+        console.error("Ошибка при загрузке статистики:", err);
+        document.getElementById("statsContainer").textContent = "Ошибка: " + err;
+      }
+    }
+
+    // Функция для загрузки списка узлов из эндпоинта /nodes/list
+    async function loadNodes() {
+      try {
+        const response = await fetch('/nodes/list');
+        const data = await response.json();
+        let html = "<h3>Зарегистрированные узлы:</h3>";
+        if (data.nodes && Object.keys(data.nodes).length > 0) {
+          html += "<ul>";
+          for (let key in data.nodes) {
+            html += `<li>${data.nodes[key]}</li>`;
+          }
+          html += "</ul>";
+        } else {
+          html += "<p>Узлов не найдено.</p>";
+        }
+        document.getElementById("nodesContainer").innerHTML = html;
+      } catch (err) {
+        console.error("Ошибка при загрузке списка узлов:", err);
+        document.getElementById("nodesContainer").textContent = "Ошибка: " + err;
+      }
+    }
+    
+    // Функция для загрузки краткой информации о цепочке
+    async function loadChain() {
+      try {
+        const response = await fetch('/chain');
+        const data = await response.json();
+        let chain = data.chain;
+        let html = `<p>Длина текущей цепочки: ${chain.length}</p>`;
+        if (chain.length > 0) {
+          // Показываем последние 3 блока
+          html += "<h4>Последние 3 блока:</h4><ol>";
+          chain.slice(-3).forEach(block => {
+            html += `<li>Блок № ${block.index} (транзакций: ${block.transactions.length})</li>`;
+          });
+          html += "</ol>";
+        }
+        document.getElementById("chainInfo").innerHTML = html;
+      } catch (err) {
+        console.error("Ошибка при загрузке информации о цепочке:", err);
+        document.getElementById("chainInfo").textContent = "Ошибка: " + err;
+      }
+    }
+
+    async function loadBitcoinPrice() {
+        try {
+        const response = await fetch('/oracle/price');
+        const data = await response.json();
+        document.getElementById("bitcoinPrice").textContent = "Цена BTC (USD): " + data.price_usd;
+        } catch (err) {
+        console.error("Ошибка при получении цены Bitcoin:", err);
+        document.getElementById("bitcoinPrice").textContent = "Ошибка: " + err;
+        }
+    }
+
+    async function loadContractEvents() {
+      // Получаем адрес смарт‑контракта из поля ввода
+      const address = document.getElementById('contractAddress').value;
+      if (!address) {
+        alert("Пожалуйста, введите адрес смарт‑контракта");
+        return;
+      }
+      try {
+        // Выполняем AJAX-запрос к эндпоинту /contract/{address}/events
+        const response = await fetch(`/contract/${address}/events`);
+        if (!response.ok) {
+          throw new Error(`Ошибка: ${response.status} ${response.statusText}`);
+        }
+        const data = await response.json();
+        // Отображаем результат в элементе <pre id="contractEvents">
+        document.getElementById('contractEvents').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        console.error("Ошибка получения событий смарт‑контракта:", err);
+        document.getElementById('contractEvents').textContent = "Ошибка: " + err;
+      }
+    }
+
+    // Можно вызывать обновление статистики автоматически через интервал:
+    // setInterval(loadStats, 30000); // каждые 30 секунд
+
+    // При загрузке страницы можно автоматически загрузить начальные данные:
+    window.onload = function() {
+        loadStats();
+        loadNodes();
+        loadChain();
+        loadBitcoinPrice();
+    };
+  </script>
+{% endblock %}

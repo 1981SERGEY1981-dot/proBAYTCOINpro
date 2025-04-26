@@ -1,0 +1,386 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <title>BAYTCOIN Interface</title>
+    <meta charset="utf-8">
+    <!-- Подключаем Socket.IO (версию можно настроить по необходимости) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js" integrity="sha512-KmIR9GEb8fYpl4/qP++sF7xkMKFZwQgEO68sw+F7U2/kMfi+t8VgNyuWj9my82KB+X2o6xCS3NmyHnmvnVKJwQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        var socket = io();
+        // При получении события new_block выводим уведомление и обновляем цепочку
+        socket.on('new_block', function(data) {
+            alert('Новый блок добыт (обновление в реальном времени): ' + JSON.stringify(data));
+            getChain();
+        });
+        // Обработка события обновления цепочки
+        socket.on('chain_updated', function(chain) {
+            alert('Цепочка была обновлена автоматически.');
+            getChain();
+        });
+
+        async function addTransaction() {
+            const sender = document.getElementById('sender').value;
+            const recipient = document.getElementById('recipient').value;
+            const amount = document.getElementById('amount').value;
+            const fee = document.getElementById('fee').value;  // получаем комиссию
+            const signature = document.getElementById('signature').value; // подпись может быть передана
+            const response = await fetch('/transactions/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sender: sender, recipient: recipient, amount: amount, fee: fee, signature: signature })
+            });
+            const data = await response.json();
+            alert(data.message);
+        }
+
+        async function addMultisigTransaction() {
+            const fromStr = document.getElementById('ms_from_addresses').value;
+            const from_addresses = fromStr.split(',').map(item => item.trim());
+            const required_signatures = parseInt(document.getElementById('ms_required').value);
+            let ms_signatures;
+            try {
+                ms_signatures = JSON.parse(document.getElementById('ms_signatures').value);
+            } catch (e) {
+                alert("Неверный формат подписей (ожидается JSON)");
+                return;
+            }
+            const recipient = document.getElementById('ms_recipient').value;
+            const amount = document.getElementById('ms_amount').value;
+            const fee = document.getElementById('ms_fee').value;
+            const multisig_data = {
+                from_addresses: from_addresses,
+                required_signatures: required_signatures,
+                signatures: ms_signatures
+            };
+            const response = await fetch('/transactions/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sender: "multisig", recipient: recipient, amount: amount, fee: fee, multisig_data: multisig_data })
+            });
+            const data = await response.json();
+            alert(data.message);
+        }
+
+        async function mineBlock() {
+            const response = await fetch('/mine');
+            const data = await response.json();
+            alert('Новый блок добыт: ' + JSON.stringify(data));
+        }
+
+        async function getChain() {
+            const response = await fetch('/chain');
+            const data = await response.json();
+            document.getElementById('chain').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function reloadChain() {
+            const response = await fetch('/chain/reload');
+            const data = await response.json();
+            if(data.chain) {
+                document.getElementById('chain').textContent = JSON.stringify(data.chain, null, 2);
+                alert(data.message);
+            } else {
+                alert(data.message);
+            }
+        }
+
+        async function registerNode() {
+            const address = document.getElementById('node_address').value;
+            const response = await fetch('/nodes/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ nodes: [address] })
+            });
+            const data = await response.json();
+            alert(data.message);
+            document.getElementById('nodes_list').textContent = "Узлы: " + JSON.stringify(data.total_nodes, null, 2);
+        }
+
+        async function resolveConflicts() {
+            const response = await fetch('/nodes/resolve');
+            const data = await response.json();
+            alert(data.message);
+            if(data.new_chain){
+                document.getElementById('chain').textContent = JSON.stringify(data.new_chain, null, 2);
+            }
+        }
+
+        async function generateWallet() {
+            const response = await fetch('/wallet/new');
+            const data = await response.json();
+            document.getElementById('wallet_keys').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function getBalance() {
+            const address = document.getElementById('balance_address').value;
+            const response = await fetch('/wallet/balance?address=' + encodeURIComponent(address));
+            const data = await response.json();
+            document.getElementById('wallet_balance').textContent = "Баланс: " + data.balance;
+        }
+
+        async function getHistory() {
+            const address = document.getElementById('history_address').value;
+            const response = await fetch('/wallet/history?address=' + encodeURIComponent(address));
+            const data = await response.json();
+            document.getElementById('wallet_history').textContent = JSON.stringify(data.history, null, 2);
+        }
+
+        async function getPending() {
+            const response = await fetch('/transactions/pending');
+            const data = await response.json();
+            document.getElementById('pending').textContent = JSON.stringify(data.pending_transactions, null, 2);
+        }
+
+        async function getStats() {
+            const response = await fetch('/stats');
+            const data = await response.json();
+            document.getElementById('stats').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function getBlockByIndex() {
+            const index = document.getElementById('block_index').value;
+            const response = await fetch('/block/' + index);
+            const data = await response.json();
+            document.getElementById('block_info').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function getTransactionById() {
+            const txid = document.getElementById('tx_id').value;
+            const response = await fetch('/transaction/' + txid);
+            const data = await response.json();
+            document.getElementById('transaction_info').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function getDifficulty() {
+            const response = await fetch('/difficulty');
+            const data = await response.json();
+            document.getElementById('difficulty').textContent = "Сложность: " + data.difficulty;
+        }
+
+        async function getReward() {
+            const response = await fetch('/reward');
+            const data = await response.json();
+            document.getElementById('reward').textContent = "Текущее базовое вознаграждение: " + data.current_reward;
+        }
+
+        async function deployContract() {
+            let codeStr = document.getElementById('contract_code').value;
+            let stateStr = document.getElementById('contract_state').value;
+            try {
+                let code = JSON.parse(codeStr);
+                let state = JSON.parse(stateStr);
+                // Преобразуем строковые функции в настоящие функции.
+                // Здесь мы используем конструкцию new Function. В реальном проекте следует использовать безопасный механизм.
+                for (let method in code) {
+                    code[method] = new Function('state', 'params', code[method]);
+                }
+                const response = await fetch('/contract/deploy', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({code: code, state: state})
+                });
+                const data = await response.json();
+                document.getElementById('contract_deploy_result').textContent = JSON.stringify(data, null, 2);
+            } catch (e) {
+                alert("Ошибка при парсинге JSON: " + e);
+            }
+        }
+
+        async function callContract() {
+            const address = document.getElementById('contract_address').value;
+            const method = document.getElementById('contract_method').value;
+            let paramsStr = document.getElementById('contract_params').value;
+            try {
+                let params = JSON.parse(paramsStr);
+                const response = await fetch('/contract/call', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({address: address, method: method, params: params})
+                });
+                const data = await response.json();
+                document.getElementById('contract_call_result').textContent = JSON.stringify(data, null, 2);
+            } catch (e) {
+                alert("Ошибка при парсинге JSON: " + e);
+            }
+        }
+
+        async function getMerkleProof() {
+            const txid = document.getElementById('mp_tx_id').value;
+            const response = await fetch('/transaction/' + txid + '/merkle_proof');
+            const data = await response.json();
+            document.getElementById('merkle_proof_result').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function startAutoMining() {
+            try {
+            const response = await fetch('/start_mining', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            const data = await response.json();
+            alert(data.message);
+            } catch (error) {
+            alert("Ошибка при запуске майнинга: " + error);
+            }
+        }
+
+        async function stopAutoMining() {
+            try {
+            const response = await fetch('/stop_mining', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            const data = await response.json();
+            alert(data.message);
+            } catch (error) {
+            alert("Ошибка при остановке майнинга: " + error);
+            }
+        }
+
+        async function searchTransactions() {
+            let sender = document.getElementById('search_sender').value;
+            let recipient = document.getElementById('search_recipient').value;
+            let min_amount = document.getElementById('search_min_amount').value;
+            let max_amount = document.getElementById('search_max_amount').value;
+            
+            // Формируем параметры запроса
+            let params = new URLSearchParams();
+            if (sender) params.append("sender", sender);
+            if (recipient) params.append("recipient", recipient);
+            if (min_amount) params.append("min_amount", min_amount);
+            if (max_amount) params.append("max_amount", max_amount);
+            
+            const response = await fetch('/transactions/search?' + params.toString());
+            const data = await response.json();
+            document.getElementById('search_results').textContent = JSON.stringify(data, null, 2);
+        }
+    </script>
+</head>
+<body>
+    <h1>BAYTCOIN Interface</h1>
+
+    <h2>Создать кошелек</h2>
+    <button onclick="generateWallet()">Создать кошелек</button>
+    <pre id="wallet_keys" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Проверка баланса кошелька</h2>
+    <form onsubmit="event.preventDefault(); getBalance();">
+        <label>Введите адрес (публичный ключ): <input type="text" id="balance_address" required></label><br>
+        <button type="submit">Проверить баланс</button>
+    </form>
+    <pre id="wallet_balance" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>История транзакций кошелька</h2>
+    <form onsubmit="event.preventDefault(); getHistory();">
+        <label>Введите адрес (публичный ключ): <input type="text" id="history_address" required></label><br>
+        <button type="submit">Получить историю транзакций</button>
+    </form>
+    <pre id="wallet_history" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Статистика блокчейна</h2>
+    <button onclick="getStats()">Получить статистику</button>
+    <pre id="stats" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Ожидающие транзакции (Mempool)</h2>
+    <button onclick="getPending()">Показать ожидающие транзакции</button>
+    <pre id="pending" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Получить блок по индексу</h2>
+    <form onsubmit="event.preventDefault(); getBlockByIndex();">
+        <label>Введите индекс блока: <input type="number" id="block_index" required></label><br>
+        <button type="submit">Получить блок</button>
+    </form>
+    <pre id="block_info" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Получить транзакцию по ID</h2>
+    <form onsubmit="event.preventDefault(); getTransactionById();">
+        <label>Введите ID транзакции: <input type="text" id="tx_id" required></label><br>
+        <button type="submit">Получить транзакцию</button>
+    </form>
+    <pre id="transaction_info" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Сложность майнинга</h2>
+    <button onclick="getDifficulty()">Показать сложность</button>
+    <pre id="difficulty" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Базовое вознаграждение (с учетом halving)</h2>
+    <button onclick="getReward()">Показать вознаграждение</button>
+    <pre id="reward" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Добавить транзакцию</h2>
+    <form onsubmit="event.preventDefault(); addTransaction();">
+        <label>Отправитель: <input type="text" id="sender" required></label><br>
+        <label>Получатель: <input type="text" id="recipient" required></label><br>
+        <label>Сумма: <input type="number" id="amount" required></label><br>
+        <label>Комиссия: <input type="number" id="fee" value="0"></label><br>
+        <label>Подпись (подпишите данные как sender+recipient+amount): <input type="text" id="signature"></label><br>
+        <button type="submit">Добавить транзакцию</button>
+    </form>
+
+    <h2>Поиск транзакций</h2>
+    <form onsubmit="event.preventDefault(); searchTransactions();">
+        <label>Отправитель: <input type="text" id="search_sender"></label><br>
+        <label>Получатель: <input type="text" id="search_recipient"></label><br>
+        <label>Минимальная сумма: <input type="number" id="search_min_amount"></label><br>
+        <label>Максимальная сумма: <input type="number" id="search_max_amount"></label><br>
+        <button type="submit">Найти транзакции</button>
+    </form>
+    <pre id="search_results" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <!-- Форма для мультиподписной транзакции -->
+    <h2>Добавить мультиподписную транзакцию</h2>
+    <form onsubmit="event.preventDefault(); addMultisigTransaction();">
+        <label>Список адресов (через запятую): <input type="text" id="ms_from_addresses" required></label><br>
+        <label>Требуемое число подписей: <input type="number" id="ms_required" required></label><br>
+        <label>Подписи (JSON, например: {"addr1":"sig1", "addr2":"sig2"}): <input type="text" id="ms_signatures" required></label><br>
+        <label>Получатель: <input type="text" id="ms_recipient" required></label><br>
+        <label>Сумма: <input type="number" id="ms_amount" required></label><br>
+        <label>Комиссия: <input type="number" id="ms_fee" value="0"></label><br>
+        <button type="submit">Отправить мультиподписную транзакцию</button>
+    </form>
+
+    <h2>Майнинг блока</h2>
+    <button onclick="mineBlock()">Добыть блок</button>
+
+    <h2>Автоматический майнинг</h2>
+    <button onclick="startAutoMining()">Старт майнинга</button>
+    <button onclick="stopAutoMining()">Стоп майнинга</button>
+
+    <h2>Цепочка блоков</h2>
+    <button onclick="getChain()">Обновить цепочку</button>
+    <button onclick="reloadChain()">Перезагрузить цепочку из диска</button>
+    <pre id="chain" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Получить Merkle доказательство транзакции</h2>
+    <form onsubmit="event.preventDefault(); getMerkleProof();">
+        <label>Введите ID транзакции: <input type="text" id="mp_tx_id" required></label><br>
+        <button type="submit">Получить Merkle доказательство</button>
+    </form>
+    <pre id="merkle_proof_result" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Деплой смарт-контракта</h2>
+    <form onsubmit="event.preventDefault(); deployContract();">
+        <label>Код контракта (JSON): <textarea id="contract_code" rows="5" cols="50" required>{"increment": "function(state, params){ state.counter = (state.counter || 0) + (params.value || 1); return state.counter; }"}</textarea></label><br>
+        <label>Начальное состояние (JSON): <textarea id="contract_state" rows="3" cols="50">{}</textarea></label><br>
+        <button type="submit">Деплоить контракт</button>
+    </form>
+    <pre id="contract_deploy_result" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Вызов смарт-контракта</h2>
+    <form onsubmit="event.preventDefault(); callContract();">
+        <label>Адрес контракта: <input type="text" id="contract_address" required></label><br>
+        <label>Метод: <input type="text" id="contract_method" required></label><br>
+        <label>Параметры (JSON): <textarea id="contract_params" rows="3" cols="50">{}</textarea></label><br>
+        <button type="submit">Вызвать контракт</button>
+    </form>
+    <pre id="contract_call_result" style="background: #f0f0f0; padding: 10px;"></pre>
+
+    <h2>Управление узлами</h2>
+    <form onsubmit="event.preventDefault(); registerNode();">
+        <label>Адрес узла (например, http://localhost:5001): <input type="text" id="node_address" required></label><br>
+        <button type="submit">Зарегистрировать узел</button>
+    </form>
+    <button onclick="resolveConflicts()">Разрешить конфликты (Консенсус)</button>
+    <pre id="nodes_list" style="background: #f0f0f0; padding: 10px;"></pre>
+{% endblock %}
+

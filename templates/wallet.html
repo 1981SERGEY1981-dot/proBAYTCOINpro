@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="container">
+        <h1>BAYTCOIN Wallet</h1>
+
+        <!-- Раздел для создания нового кошелька -->
+        <h2>Создать новый кошелек</h2>
+        <button onclick="generateWallet()">Создать кошелек</button>
+        <pre id="walletKeys"></pre>
+
+        <!-- Раздел для проверки баланса -->
+        <h2>Проверка баланса</h2>
+        <input type="text" id="balanceAddress" placeholder="Введите адрес кошелька">
+        <button onclick="checkBalance()">Проверить баланс</button>
+        <pre id="walletBalance"></pre>
+
+        <!-- Раздел для получения истории транзакций -->
+        <h2>История транзакций</h2>
+        <input type="text" id="historyAddress" placeholder="Введите адрес кошелька">
+        <button onclick="getHistory()">Получить историю транзакций</button>
+        <pre id="walletHistory"></pre>
+
+        <h2>Отправить транзакцию</h2>
+        <form id="sendTxForm" onsubmit="event.preventDefault(); sendTransaction();">
+            <input type="text" id="senderAddress" placeholder="Отправитель (публичный ключ)" required>
+            <input type="text" id="recipientAddress" placeholder="Получатель (публичный ключ)" required>
+            <input type="number" id="amount" placeholder="Сумма" required step="any">
+            <input type="number" id="fee" placeholder="Комиссия" required step="any">
+            <input type="text" id="sendSignature" placeholder="Подпись (или оставьте пустым)">
+            <!-- Поле для nonce -->
+            <input type="number" id="nonce" placeholder="Nonce" value="0" required>
+            <button type="submit">Отправить транзакцию</button>
+            <pre id="sendTxResult"></pre>
+        </form>
+        <a href="/mine">Перейти к майнингу</a>
+    </div>
+
+    <script>
+       document.getElementById('generateWalletBtn').addEventListener('click', async () => {
+            const response = await fetch('/wallet/new');
+            const data = await response.json();
+            document.getElementById('walletKeys').textContent = JSON.stringify(data, null, 2);
+        });
+        document.getElementById('checkBalanceBtn').addEventListener('click', async () => {
+            const address = document.getElementById('balanceAddress').value;
+            if (!address) return;
+            const response = await fetch('/wallet/balance?address=' + encodeURIComponent(address));
+            const data = await response.json();
+            document.getElementById('walletBalance').textContent = 'Баланс: ' + data.balance;
+        });
+        document.getElementById('getHistoryBtn').addEventListener('click', async () => {
+            const address = document.getElementById('historyAddress').value;
+            if (!address) return;
+            const response = await fetch('/wallet/history?address=' + encodeURIComponent(address));
+            const data = await response.json();
+            document.getElementById('walletHistory').textContent = JSON.stringify(data.history, null, 2);
+        });
+        document.getElementById('sendTxForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const sender = document.getElementById('senderAddress').value;
+            const recipient = document.getElementById('recipientAddress').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const fee = parseFloat(document.getElementById('fee').value);
+            const nonce = parseInt(document.getElementById('nonce').value);
+            const signature = document.getElementById('sendSignature').value;
+            const payload = { sender, recipient, amount, fee, nonce, signature };
+            const response = await fetch('/transactions/new', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            document.getElementById('sendTxResult').textContent = JSON.stringify(data, null, 2);
+        });
+        
+
+    </script>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+    <h2>Настройка майнинга</h2>
+    <form id="minerForm">
+      <input
+        type="text"
+        id="miner_address"
+        name="miner_address"
+        placeholder="Введите адрес кошелька"
+        required
+      >
+      <button type="submit">Запустить майнинг</button>
+    </form>
+    <pre id="mineResult"></pre>
+  </div>
+
+  <script>
+    async function setMiner() {
+      const token = localStorage.getItem('access_token'); // или откуда вы его берёте
+      const address = document.getElementById('minerAddressInput').value;  
+
+      const resp = await fetch('/set_miner', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ miner_address: address })  // или {} если адрес уже в профиле
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        alert(`❌ Ошибка: ${err.msg || err.message}`);
+        return;
+      }
+
+      alert('Майнер успешно установлен');
+    }
+
+    document.getElementById('minerForm').addEventListener('submit', setMiner);
+  </script>
+{% endblock %}
+
+

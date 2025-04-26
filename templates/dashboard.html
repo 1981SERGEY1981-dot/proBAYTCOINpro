@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container" style="max-width:900px; margin:2rem auto; text-align:center;">
+    <h1>Дашборд торговли BAYTCOIN</h1>
+
+    <!-- Контейнер для свечного графика-->
+    <div id="tradeChartContainer" style="height:450px; width:100%; margin:2rem 0;"></div>
+  </div>
+    <!-- Форма покупки BAYT за USD -->
+    <div class="card" style="margin:1rem 0;">
+        <h2>Купить BAYT</h2>
+        <form id="buyForm" style="display:flex; gap:0.5rem; justify-content:center;">
+          <input type="number" id="buyUsd" placeholder="Сумма в USD" min="0" step="0.01"
+                 style="flex:1;padding:0.5rem;border:1px solid #ccc;border-radius:4px;">
+          <button type="submit"
+                  style="padding:0.5rem 1rem;background:#2b6cb0;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+            Купить
+          </button>
+        </form>
+        <pre id="buyResult" style="color:green;margin-top:0.5rem;"></pre>
+      </div>
+    
+      <!-- Форма продажи BAYT за USD -->
+      <div class="card" style="margin:1rem 0;">
+        <h2>Продать BAYT</h2>
+        <form id="sellForm" style="display:flex; gap:0.5rem; justify-content:center;">
+          <input type="number" id="sellBayt" placeholder="Кол-во BAYT" min="0" step="0.0001"
+                 style="flex:1;padding:0.5rem;border:1px solid #ccc;border-radius:4px;">
+          <button type="submit"
+                  style="padding:0.5rem 1rem;background:#e53e3e;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+            Продать
+          </button>
+        </form>
+        <pre id="sellResult" style="color:green;margin-top:0.5rem;"></pre>
+      </div>
+    
+      <!-- Здесь можно оставить тот же график цены и историю баланса -->
+      <div class="card" style="margin:1rem 0;">
+        <h2>График цены BAYT/USD (30 дней)</h2>
+        <div id="priceChartContainer" style="height: 350px; width: 100%;"></div>
+      </div>
+    
+      <div class="card" style="margin:1rem 0;">
+        <h2>История баланса</h2>
+        <canvas id="dashboardChart" style="width:100%; height:300px;"></canvas>
+      </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+  <!-- jQuery и CanvasJS StockChart -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://canvasjs.com/assets/script/canvasjs.stock.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    // Функция для чтения токена из localStorage
+    function getToken() {
+      return localStorage.getItem('access_token');
+    }
+
+    // Обработчик покупки
+    document.getElementById('buyForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const amountUsd = parseFloat(document.getElementById('buyUsd').value);
+      const res = await fetch('/trade/buy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + getToken()
+        },
+        body: JSON.stringify({ amount_usd: amountUsd })
+      });
+      const data = await res.json();
+      document.getElementById('buyResult').textContent =
+        res.ok
+          ? `Куплено ${data.acquired_bayt.toFixed(6)} BAYT за ${data.spent_usd.toFixed(2)} USD`
+          : `Ошибка: ${data.msg}`;
+    });
+
+    // Обработчик продажи
+    document.getElementById('sellForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const amountBayt = parseFloat(document.getElementById('sellBayt').value);
+      const res = await fetch('/trade/sell', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + getToken()
+        },
+        body: JSON.stringify({ amount_bayt: amountBayt })
+      });
+      const data = await res.json();
+      document.getElementById('sellResult').textContent =
+        res.ok
+          ? `Продано ${data.sold_bayt.toFixed(6)} BAYT, получено ${data.acquired_usd.toFixed(2)} USD`
+          : `Ошибка: ${data.msg}`;
+    });
+
+    // Два массива: dps1 — для свечей (OHLC), dps2 — для навигатора (закрытие)
+    var dps1 = [], dps2 = [];
+
+    // Инициализация StockChart
+    var stockChart = new CanvasJS.StockChart("tradeChartContainer", {
+      title: { text: "Свечной график BAYTCOIN / USD (за 30 дней)" },
+      charts: [{
+        axisY: {
+          prefix: "$",
+          title: "Цена (USD)"
+        },
+        toolTip: { shared: true },
+        data: [{
+          type: "candlestick",
+          showInLegend: true,
+          name: "Цена",
+          yValueFormatString: "$#,###.00",
+          xValueType: "dateTime",
+          dataPoints: dps1
+        }]
+      }],
+      navigator: {
+        data: [{ dataPoints: dps2 }],
+        slider: {
+          // изначально показывать последние 30 дней
+          minimum: new Date(new Date().setDate(new Date().getDate() - 30)),
+          maximum: new Date()
+        }
+      }
+    });
+
+    // Запрашиваем у своего бекенда OHLC-данные за 30 дней
+    $.getJSON("/trades?days=30", function(data) {
+      data.forEach(function(d) {
+        var ts = d.timestamp;      // миллисекунды UNIX
+        dps1.push({ x: new Date(ts), y: [d.open, d.high, d.low, d.close] });
+        dps2.push({ x: new Date(ts), y: d.close });
+      });
+      stockChart.render();  // отрисовать график после загрузки данных
+    });
+  </script>
+{% endblock %}

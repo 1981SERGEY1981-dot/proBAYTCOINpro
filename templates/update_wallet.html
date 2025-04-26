@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+      <h1>Обновление ключей кошелька</h1>
+      <input type="text" id="private_key" placeholder="Новый приватный ключ" required>
+      <input type="text" id="public_key" placeholder="Новый публичный ключ" required>
+      <button onclick="updateWallet()">Обновить ключи кошелька</button>
+      <pre id="updateWalletResult"></pre>
+  </div>
+
+  <script>
+    async function updateWallet() {
+      const private_key = document.getElementById('private_key').value;
+      const public_key = document.getElementById('public_key').value;
+      try {
+         const response = await fetch('/wallet/keys', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+            },
+            body: JSON.stringify({ private_key, public_key })
+         });
+         const data = await response.json();
+         document.getElementById('updateWalletResult').textContent = JSON.stringify(data, null, 2);
+      } catch(err) {
+         document.getElementById('updateWalletResult').textContent = "Ошибка: " + err;
+      }
+    }
+  </script>
+{% endblock %}

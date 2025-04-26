@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}BAYTCOIN{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/modern-css-reset/dist/reset.min.css">
+  <style>
+    /* Общие стили страницы */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      color: #0c2c06;
+      line-height: 1.5;
+    }
+    /* Стили навигации */
+    .main-nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      background: #08978b;
+      padding: 10px;
+      gap: 8px;
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+    }
+    .main-nav a {
+      color: #edf2f7;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+      white-space: nowrap;
+    }
+    .main-nav a:hover {
+      background-color: #2d3748;
+    }
+    /* Основной контейнер для контента */
+    .main-content {
+      max-width: 960px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #b2f0eb;
+      box-shadow: 0 2px 4px rgba(66, 3, 3, 0.1);
+      border-radius: 4px;
+    }
+    /* Если внутри есть canvas (графики), пусть растягиваются во весь .main-content */
+    .main-content canvas {
+      display: block;
+      width: 100% !important;
+      height: auto !important;
+    }
+    .card {
+      background: #fff;
+      border-radius: 6px;
+      padding: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+    <nav class="main-nav">
+      <div class="nav-container">
+        <a href="{{ url_for('index') }}">Главная</a>
+        <a href="{{ url_for('login_page') }}">Войти</a>
+        <a href="{{ url_for('register_page') }}">Регистрация</a>
+        <a href="{{ url_for('profile_page') }}">Профиль</a>
+        <a href="{{ url_for('update_wallet_page') }}">Обновить ключи</a>
+        <a href="{{ url_for('wallet_page') }}">Кошелёк</a>
+        <a href="{{ url_for('dashboard_page') }}">Дашборд</a>
+        <a href="{{ url_for('mine_page') }}">Майнинг</a>
+        <a href="{{ url_for('contracts_page') }}">Контракты</a>
+        <a href="{{ url_for('events_page') }}">События</a>
+        <a href="{{ url_for('explorer') }}">Исследователь</a>
+        <a href="{{ url_for('vote_page') }}">Голосование</a>
+        <a href="{{ url_for('admin_panel') }}">Админ</a>
+      </div>
+    </nav>
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  
+    {% block scripts %}{% endblock %}
+</body>
+</html>
